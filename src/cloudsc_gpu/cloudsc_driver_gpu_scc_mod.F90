@@ -100,6 +100,9 @@ CONTAINS
     TYPE(PERFORMANCE_TIMER) :: TIMER
     INTEGER(KIND=JPIM) :: TID ! thread id from 0 .. NUMOMP - 1
 
+    INTEGER(KIND=JPIM) :: BUFFER_BLOCK_SIZE ! block size for blocks in outer loop /johan
+    INTEGER(KIND=JPIM) :: BUFFER_COUNT ! block size for blocks in outer loop /johan
+
     ! Local copy of cloud parameters for offload
     TYPE(TECLDP) :: LOCAL_YRECLDP
 
@@ -118,13 +121,14 @@ CONTAINS
     LOCAL_YRECLDP = YRECLDP
 
 !$acc data &
-!$acc copyin( &
+!$acc copyin( &                                             ! initialized and copied to device, but NOT COPIED BACK to host
 !$acc   pt,pq,buffer_cml,buffer_tmp,pvfa, &
 !$acc   pvfl,pvfi,pdyna,pdynl,pdyni,phrsw,phrlw,pvervel, &
 !$acc   pap,paph,plsm,ldcum,ktype,plu,psnde, &
 !$acc   pmfu,pmfd,pa,pclv,psupsat,plcrit_aer,picrit_aer, &
 !$acc   pre_ice,pccn,pnice, yrecldp) &
-!$acc copy( &
+!$acc copy( &                                               ! initialized and copied to device then back to host after region is
+!done
 !$acc   buffer_loc,plude,pcovptot,prainfrac_toprfz) &
 !$acc copyout( &
 !$acc   pfsqlf,pfsqif,pfcqnng, &
@@ -135,8 +139,13 @@ CONTAINS
     TID = GET_THREAD_NUM()
     CALL TIMER%THREAD_START(TID)
 
+    BUFFER_BLOCK_SIZE=NGPTOT
+    BUFFER_COUNT=(NGPTOT+BUFFER_BLOCK_SIZE-1)/BUFFER_BLOCK_SIZE
+
+    DO BUFFER_IDX=1,BUFFER_COUNT
+
 !$acc parallel loop gang vector_length(NPROMA)
-    DO JKGLO=1,NGPTOT,NPROMA
+    DO JKGLO=BUFFER_IDX*BUFFER_COUNT, MIN((BUFFER_IDX+1)*BUFFER_COUNT, NGPTOT), NPROMA ! loops from 1 ... NGPTOT, with step size NPROMA
        IBL=(JKGLO-1)/NPROMA+1
        ICEND=MIN(NPROMA,NGPTOT-JKGLO+1)
 
@@ -168,6 +177,7 @@ CONTAINS
     ENDDO
 !$acc end parallel loop
 
+    ENDDO ! end of outer block loop
     CALL TIMER%THREAD_END(TID)
 
 !$acc end data
