@@ -140,7 +140,7 @@ CONTAINS
 !$acc   pq(:,:,BLOCK_START:BLOCK_END),buffer_cml, &
 !$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), &
 !$acc   pvfa(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pvfl(:,:,BLOCK_START:BLOCK_END),
+!$acc   pvfl(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pvfi(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pdyna(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pdynl(:,:,BLOCK_START:BLOCK_END), &
@@ -152,13 +152,13 @@ CONTAINS
 !$acc   paph(:,:,BLOCK_START:BLOCK_END), &
 !$acc   plsm(:,BLOCK_START:BLOCK_END), &
 !$acc   ldcum(:,BLOCK_START:BLOCK_END), &
-!$acc   ktype(:,BLOCK_START:BLOCK_END),
+!$acc   ktype(:,BLOCK_START:BLOCK_END), &
 !$acc   plu(:,:,BLOCK_START:BLOCK_END), &
 !$acc   psnde(:,:,BLOCK_START:BLOCK_END),
 !$acc   pmfu(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pmfd(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pa(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pclv(:,:,:,BLOCK_START:BLOCK_END),
+!$acc   pclv(:,:,:,BLOCK_START:BLOCK_END), &
 !$acc   psupsat(:,:,BLOCK_START:BLOCK_END), &
 !$acc   plcrit_aer(:,:,BLOCK_START:BLOCK_END), &
 !$acc   picrit_aer(:,:,BLOCK_START:BLOCK_END), &
