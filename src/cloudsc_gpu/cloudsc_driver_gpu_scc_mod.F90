@@ -133,13 +133,11 @@ CONTAINS
     DO BUFFER_IDX=0, BUFFER_COUNT-1
     BLOCK_START=BUFFER_IDX*BUFFER_BLOCK_SIZE+1
     BLOCK_END=MIN((BUFFER_IDX+1)*BUFFER_BLOCK_SIZE, NGPTOT)
-    (:,:,BLOCK_START:BLOCK_END)
-    (:,BLOCK_START:BLOCK_END)
 
 !$acc data &
-!$acc copyin( &             ! initialized and copied to device, but NOT COPIED BACK to host
+!$acc copyin( &
 !$acc   pt(:,:, BLOCK_START:BLOCK_END),pq(:,:,BLOCK_START:BLOCK_END),buffer_cml, &
-!$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), pvfa(:,:BLOCK_START:BLOCK_END), &
+!$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), pvfa(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pvfl(:,:,BLOCK_START:BLOCK_END),pvfi(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pdyna(:,:,BLOCK_START:BLOCK_END),pdynl(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pdyni(:,:,BLOCK_START:BLOCK_END),phrsw(:,:,BLOCK_START:BLOCK_END), &
@@ -193,11 +191,12 @@ CONTAINS
 
     ENDDO
 !$acc end parallel loop
+!$acc end data
 
     ENDDO ! end of outer block loop
+
     CALL TIMER%THREAD_END(TID)
 
-!$acc end data
 
     CALL TIMER%END()
 
