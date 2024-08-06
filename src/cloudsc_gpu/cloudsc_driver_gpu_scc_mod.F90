@@ -103,6 +103,8 @@ CONTAINS
     INTEGER(KIND=JPIM) :: BUFFER_BLOCK_SIZE     ! block size for blocks in outer loop /johan
     INTEGER(KIND=JPIM) :: BUFFER_COUNT          ! number of buffers
     INTEGER(KIND=JPIM) :: BUFFER_IDX            ! idx of current buffer
+    INTEGER(KIND=JPIM) :: BLOCK_START            ! idx of current buffer
+    INTEGER(KIND=JPIM) :: BLOCK_END            ! idx of current buffer
 
     ! Local copy of cloud parameters for offload
     TYPE(TECLDP) :: LOCAL_YRECLDP
@@ -144,9 +146,11 @@ CONTAINS
     BUFFER_COUNT=(NGPTOT+BUFFER_BLOCK_SIZE-1)/BUFFER_BLOCK_SIZE
 
     DO BUFFER_IDX=0, BUFFER_COUNT-1
+    BLOCK_START=BUFFER_IDX*BUFFER_BLOCK_SIZE+1
+    BLOCK_END=MIN(BUFFER_IDX+1)*BUFFER_BLOCK_SIZE, NGPTOT)
 
 !$acc parallel loop gang vector_length(NPROMA)
-    DO JKGLO=BUFFER_IDX*BUFFER_BLOCK_SIZE+1, MIN((BUFFER_IDX+1)*BUFFER_BLOCK_SIZE, NGPTOT), NPROMA ! loops from 1 ... NGPTOT, with step size NPROMA
+    DO JKGLO=BLOCK_START, BLOCK_END, NPROMA ! loops from 1 ... NGPTOT, with step size NPROMA
        IBL=(JKGLO-1)/NPROMA+1
        ICEND=MIN(NPROMA,NGPTOT-JKGLO+1)
 
