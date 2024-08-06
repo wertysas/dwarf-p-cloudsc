@@ -123,21 +123,6 @@ CONTAINS
     ! moved to the device the in ``acc data`` clause below
     LOCAL_YRECLDP = YRECLDP
 
-!$acc data &
-!$acc copyin( &                                             ! initialized and copied to device, but NOT COPIED BACK to host
-!$acc   pt,pq,buffer_cml,buffer_tmp,pvfa, &
-!$acc   pvfl,pvfi,pdyna,pdynl,pdyni,phrsw,phrlw,pvervel, &
-!$acc   pap,paph,plsm,ldcum,ktype,plu,psnde, &
-!$acc   pmfu,pmfd,pa,pclv,psupsat,plcrit_aer,picrit_aer, &
-!$acc   pre_ice,pccn,pnice, yrecldp) &
-!$acc copy( &                                               ! initialized and copied to device then back to host after region is
-!done
-!$acc   buffer_loc,plude,pcovptot,prainfrac_toprfz) &
-!$acc copyout( &
-!$acc   pfsqlf,pfsqif,pfcqnng, &
-!$acc   pfcqlng ,pfsqrf,pfsqsf,pfcqrng,pfcqsng,pfsqltur, &
-!$acc   pfsqitur,pfplsl,pfplsn,pfhpsl,pfhpsn)
-
     ! Local timer for each thread
     TID = GET_THREAD_NUM()
     CALL TIMER%THREAD_START(TID)
@@ -148,6 +133,33 @@ CONTAINS
     DO BUFFER_IDX=0, BUFFER_COUNT-1
     BLOCK_START=BUFFER_IDX*BUFFER_BLOCK_SIZE+1
     BLOCK_END=MIN((BUFFER_IDX+1)*BUFFER_BLOCK_SIZE, NGPTOT)
+    (:,:,BLOCK_START:BLOCK_END)
+    (:,BLOCK_START:BLOCK_END)
+
+!$acc data &
+!$acc copyin( &             ! initialized and copied to device, but NOT COPIED BACK to host
+!$acc   pt(:,:, BLOCK_START:BLOCK_END),pq(:,:,BLOCK_START:BLOCK_END),buffer_cml, &
+!$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), pvfa(:,:BLOCK_START:BLOCK_END), &
+!$acc   pvfl(:,:,BLOCK_START:BLOCK_END),pvfi(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pdyna(:,:,BLOCK_START:BLOCK_END),pdynl(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pdyni(:,:,BLOCK_START:BLOCK_END),phrsw(:,:,BLOCK_START:BLOCK_END), &
+!$acc   phrlw(:,:,BLOCK_START:BLOCK_END),pvervel(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pap(:,:,BLOCK_START:BLOCK_END),paph(:,:,BLOCK_START:BLOCK_END), &
+!$acc   plsm(:,BLOCK_START:BLOCK_END),ldcum(:,BLOCK_START:BLOCK_END), &
+!$acc   ktype(:,BLOCK_START:BLOCK_END),plu(:,:,BLOCK_START:BLOCK_END), &
+!$acc   psnde(:,:,BLOCK_START:BLOCK_END),pmfu(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pmfd(:,:,BLOCK_START:BLOCK_END),pa(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pclv(:,:,:,BLOCK_START:BLOCK_END),psupsat(:,:,BLOCK_START:BLOCK_END), &
+!$acc   plcrit_aer(:,:,BLOCK_START:BLOCK_END),picrit_aer(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pre_ice(:,:,BLOCK_START:BLOCK_END),pccn(:,:,BLOCK_START:BLOCK_END),pnice(:,:,BLOCK_START:BLOCK_END), yrecldp) &
+!$acc copy( &               ! initialized and copied to device then back to host after region is done
+!$acc   buffer_loc(:,:,:,BLOCK_START:BLOCK_END),plude(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pcovptot(:,:,BLOCK_START:BLOCK_END),prainfrac_toprfz(:,BLOCK_START:BLOCK_END)) &
+!$acc copyout( &
+!$acc   pfsqlf(:,:,BLOCK_START:BLOCK_END),pfsqif(:,:,BLOCK_START:BLOCK_END),pfcqnng(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqlng(:,:,BLOCK_START:BLOCK_END) ,pfsqrf(:,:,BLOCK_START:BLOCK_END),pfsqsf(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqrng(:,:,BLOCK_START:BLOCK_END),pfcqsng(:,:,BLOCK_START:BLOCK_END),pfsqltur(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqitur(:,:,BLOCK_START:BLOCK_END),pfplsl(:,:,BLOCK_START:BLOCK_END),pfplsn(:,:,BLOCK_START:BLOCK_END),pfhpsl(:,:,BLOCK_START:BLOCK_END),pfhpsn(:,:,BLOCK_START:BLOCK_END))
 
 !$acc parallel loop gang vector_length(NPROMA)
     DO JKGLO=BLOCK_START, BLOCK_END, NPROMA ! loops from 1 ... NGPTOT, with step size NPROMA
