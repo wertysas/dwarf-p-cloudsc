@@ -136,28 +136,57 @@ CONTAINS
 
 !$acc data &
 !$acc copyin( &
-!$acc   pt(:,:, BLOCK_START:BLOCK_END),pq(:,:,BLOCK_START:BLOCK_END),buffer_cml, &
-!$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), pvfa(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pvfl(:,:,BLOCK_START:BLOCK_END),pvfi(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pdyna(:,:,BLOCK_START:BLOCK_END),pdynl(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pdyni(:,:,BLOCK_START:BLOCK_END),phrsw(:,:,BLOCK_START:BLOCK_END), &
-!$acc   phrlw(:,:,BLOCK_START:BLOCK_END),pvervel(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pap(:,:,BLOCK_START:BLOCK_END),paph(:,:,BLOCK_START:BLOCK_END), &
-!$acc   plsm(:,BLOCK_START:BLOCK_END),ldcum(:,BLOCK_START:BLOCK_END), &
-!$acc   ktype(:,BLOCK_START:BLOCK_END),plu(:,:,BLOCK_START:BLOCK_END), &
-!$acc   psnde(:,:,BLOCK_START:BLOCK_END),pmfu(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pmfd(:,:,BLOCK_START:BLOCK_END),pa(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pclv(:,:,:,BLOCK_START:BLOCK_END),psupsat(:,:,BLOCK_START:BLOCK_END), &
-!$acc   plcrit_aer(:,:,BLOCK_START:BLOCK_END),picrit_aer(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pre_ice(:,:,BLOCK_START:BLOCK_END),pccn(:,:,BLOCK_START:BLOCK_END),pnice(:,:,BLOCK_START:BLOCK_END), yrecldp) &
+!$acc   pt(:,:, BLOCK_START:BLOCK_END), &
+!$acc   pq(:,:,BLOCK_START:BLOCK_END),buffer_cml, &
+!$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), &
+!$acc   pvfa(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pvfl(:,:,BLOCK_START:BLOCK_END),
+!$acc   pvfi(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pdyna(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pdynl(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pdyni(:,:,BLOCK_START:BLOCK_END),&
+!$acc   phrsw(:,:,BLOCK_START:BLOCK_END), &
+!$acc   phrlw(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pvervel(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pap(:,:,BLOCK_START:BLOCK_END), &
+!$acc   paph(:,:,BLOCK_START:BLOCK_END), &
+!$acc   plsm(:,BLOCK_START:BLOCK_END), &
+!$acc   ldcum(:,BLOCK_START:BLOCK_END), &
+!$acc   ktype(:,BLOCK_START:BLOCK_END),
+!$acc   plu(:,:,BLOCK_START:BLOCK_END), &
+!$acc   psnde(:,:,BLOCK_START:BLOCK_END),
+!$acc   pmfu(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pmfd(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pa(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pclv(:,:,:,BLOCK_START:BLOCK_END),
+!$acc   psupsat(:,:,BLOCK_START:BLOCK_END), &
+!$acc   plcrit_aer(:,:,BLOCK_START:BLOCK_END), &
+!$acc   picrit_aer(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pre_ice(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pccn(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pnice(:,:,BLOCK_START:BLOCK_END), &
+!$acc   yrecldp) &
 !$acc copy( &               ! initialized and copied to device then back to host after region is done
-!$acc   buffer_loc(:,:,:,BLOCK_START:BLOCK_END),plude(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pcovptot(:,:,BLOCK_START:BLOCK_END),prainfrac_toprfz(:,BLOCK_START:BLOCK_END)) &
+!$acc   buffer_loc(:,:,:,BLOCK_START:BLOCK_END), &
+!$acc   plude(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pcovptot(:,:,BLOCK_START:BLOCK_END), &
+!$acc   prainfrac_toprfz(:,BLOCK_START:BLOCK_END)) &
 !$acc copyout( &
-!$acc   pfsqlf(:,:,BLOCK_START:BLOCK_END),pfsqif(:,:,BLOCK_START:BLOCK_END),pfcqnng(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqlng(:,:,BLOCK_START:BLOCK_END) ,pfsqrf(:,:,BLOCK_START:BLOCK_END),pfsqsf(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqrng(:,:,BLOCK_START:BLOCK_END),pfcqsng(:,:,BLOCK_START:BLOCK_END),pfsqltur(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqitur(:,:,BLOCK_START:BLOCK_END),pfplsl(:,:,BLOCK_START:BLOCK_END),pfplsn(:,:,BLOCK_START:BLOCK_END),pfhpsl(:,:,BLOCK_START:BLOCK_END),pfhpsn(:,:,BLOCK_START:BLOCK_END))
+!$acc   pfsqlf(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqif(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqnng(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqlng(:,:,BLOCK_START:BLOCK_END) , &
+!$acc   pfsqrf(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqsf(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqrng(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqsng(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqltur(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqitur(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfplsl(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfplsn(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfhpsl(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfhpsn(:,:,BLOCK_START:BLOCK_END))
+
 
 !$acc parallel loop gang vector_length(NPROMA)
     DO JKGLO=BLOCK_START, BLOCK_END, NPROMA ! loops from 1 ... NGPTOT, with step size NPROMA
