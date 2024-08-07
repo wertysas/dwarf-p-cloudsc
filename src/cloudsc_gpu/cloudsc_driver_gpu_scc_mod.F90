@@ -373,42 +373,44 @@ CONTAINS
 !       !$acc end data
 !
 !           ENDDO ! end of outer block loop
-
-    ALLOCATE(TEST_ARRAY(1024,1024))
+    BUFFER_BLOCK_SIZE=1000000*30/SIZEOF(TEST_ARRAY(1,1))
+    print *, 'Size of BUFFER_BLOCK_SIZE', BUFFER_BLOCK_SIZE
+    ALLOCATE(TEST_ARRAY(BUFFER_BLOCK_SIZE,2048))
+    print *, 'Size of TEST_ARRAY', SIZEOF(TEST_ARRAY)
     TEST_ARRAY = 37 ! do I need TEST_ARRAY(:,:)=37 ?
-    ALLOCATE(TEST_ARRAY_BLOCK(1024,64))
+    ALLOCATE(TEST_ARRAY_BLOCK(BUFFER_BLOCK_SIZE,128))
 
     !$acc enter data create(TEST_ARRAY_BLOCK)
 
-    DO BLK=1,1024,64
+    DO BLK=1,2048,128
 
       !$acc host_data use_device(TEST_ARRAY_BLOCK)
-      call acc_memcpy_to_device(TEST_ARRAY_BLOCK, TEST_ARRAY(:,BLK:BLK+63), 1024*64*SIZEOF(TEST_ARRAY(1,1)))
+      call acc_memcpy_to_device(TEST_ARRAY_BLOCK, TEST_ARRAY(:,BLK:BLK+127), BUFFER_BLOCK_SIZE*128*SIZEOF(TEST_ARRAY(1,1)))
       !$acc end host_data
 
 !!      !$acc serial present(TEST_ARRAY_BLOCK)  ! Inside serial region everythin is executed on device on 1 thread
 !!      !$acc end serial
 
-      !$acc parallel loop gang vector_length(64) present(TEST_ARRAY_BLOCK)
-      DO J=1,64
+      !$acc parallel loop gang vector_length(128) present(TEST_ARRAY_BLOCK)
+      DO J=1,128
         !$acc loop vector
-        DO I=1,1024
+        DO I=1,BUFFER_BLOCK_SIZE
         TEST_ARRAY_BLOCK(I,J) = 5
         END DO
       END DO
       !$acc end parallel loop
 
       !$acc host_data use_device(TEST_ARRAY_BLOCK)
-      call acc_memcpy_from_device(TEST_ARRAY(:,BLK:BLK+63), TEST_ARRAY_BLOCK, 1024*64*SIZEOF(TEST_ARRAY(1,1)))
+      call acc_memcpy_from_device(TEST_ARRAY(:,BLK:BLK+127), TEST_ARRAY_BLOCK, BUFFER_BLOCK_SIZE*128*SIZEOF(TEST_ARRAY(1,1)))
       !$acc end host_data
-
+      
     END DO
 
     !$acc exit data delete(TEST_ARRAY_BLOCK)
 
     ! CHECK OUTPUT
-      DO J=1,1024
-        DO I=1,1024
+      DO J=1,2048
+        DO I=1,BUFFER_BLOCK_SIZE
           IF (TEST_ARRAY(I,J) /= 5) print*, 'Incorect value in TEST_ARRAY (should be 5)', TEST_ARRAY(I,J)
         END DO
       END DO
