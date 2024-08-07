@@ -105,6 +105,65 @@ CONTAINS
     INTEGER(KIND=JPIM) :: BUFFER_IDX            ! idx of current buffer
     INTEGER(KIND=JPIM) :: BLOCK_START            ! idx of current buffer
     INTEGER(KIND=JPIM) :: BLOCK_END            ! idx of current buffer
+    
+    ! Temporary buffers used for double blocked lopo todo: remove and explicitly transfer
+    ! copyin
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pt_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pq_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: buffer_tmp_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pvfa_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pvfl_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pvfi_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pdyna_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pdynl_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pdyni_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: phrsw_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: phrlw_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pvervel_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pap_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: paph_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: plsm_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: ldcum_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: ktype_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: plu_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: psnde_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pmfu_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pmfd_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pa_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pclv_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: psupsat_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: plcrit_aer_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: picrit_aer_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pre_ice_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pccn_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pnice_block
+    ! ! copy
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) ::buffer_loc_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: plude_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pcovptot_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: prainfrac_toprfz_block
+    ! ! copyout
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfsqlf_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfsqif_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfcqnng_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfcqlng_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfsqrf_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfsqsf_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfcqrng_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfcqsng_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfsqltur_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfsqitur_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfplsl_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfplsn_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfhpsl_block
+    ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfhpsn_block
+
+    REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:) :: TEST_ARRAY
+    REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:) :: TEST_ARRAY_BLOCK
+    INTEGER(KIND=JPIM) :: J
+    INTEGER(KIND=JPIM) :: I
+    INTEGER(KIND=JPIM) :: BLK
+    
 
     ! Local copy of cloud parameters for offload
     TYPE(TECLDP) :: LOCAL_YRECLDP
@@ -130,9 +189,118 @@ CONTAINS
     BUFFER_BLOCK_SIZE=NGPTOT
     BUFFER_COUNT=(NGPTOT+BUFFER_BLOCK_SIZE-1)/BUFFER_BLOCK_SIZE
 
+
+!     ! buffer allocations
+!     !copyin
+!     ALLOCATE pt_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! T at start of callpar
+!     ALLOCATE pq_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! Q at start of callpar
+!     ALLOCATE buffer_tmp_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_TMP
+!     ! ALLOCATE BUFFER_CML_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_CML
+!     ALLOCATE pvfa_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! CC from VDF scheme
+!     ALLOCATE pvfl_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Liq from VDF scheme
+!     ALLOCATE pvfi_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Ice from VDF scheme
+!     ALLOCATE pdyna_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! CC from Dynamics
+!     ALLOCATE pdynl_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Liq from Dynamics
+!     ALLOCATE pdyni_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Liq from Dynamics
+!     ALLOCATE phrsw_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Short-wave heating rate
+!     ALLOCATE phrlw_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Long-wave heating rate
+!     ALLOCATE pvervel_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)  !Vertical velocity
+!     ALLOCATE pap_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)      ! Pressure on full levels
+!     ALLOCATE paph_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE) ! Pressure on half levels
+!     ALLOCATE plsm_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Land fraction _block(0-1)
+!     ALLOCATE ldcum_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Convection active
+!     ALLOCATE ktype_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Convection type 0,1,2
+!     ALLOCATE plu_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)      ! Conv. condensate
+!     ALLOCATE psnde_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Conv. detrained snow
+!     ALLOCATE pmfu_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Conv. mass flux up
+!     ALLOCATE pmfd_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Conv. mass flux down
+!     ALLOCATE pa_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)       ! Original Cloud fraction _block(t)
+!     ALLOCATE pclv_block(NPROMA, NLEV, NCLV, BUFFER_BLOCK_SIZE)
+!     ALLOCATE psupsat_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
+!     ALLOCATE plcrit_aer_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
+!     ALLOCATE picrit_aer_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
+!     ALLOCATE pre_ice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
+!     ALLOCATE pccn_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! liquid cloud condensation nuclei
+!     ALLOCATE pnice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
+!     
+!     ! copy
+!     ALLOCATE buffer_loc_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_LOC
+!     ALLOCATE plude_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Conv. detrained water
+!     ALLOCATE pcovptot_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Precip fraction
+!     ALLOCATE prainfrac_toprfz_block(NPROMA, BUFFER_BLOCK_SIZE)
+!     
+!     !copyout
+!     ALLOCATE pfsqlf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux of liquid
+!     ALLOCATE pfsqif_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux of ice
+!     ALLOCATE pfcqnng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! -ve corr for ice
+!     ALLOCATE pfcqlng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! -ve corr for liq
+!     ALLOCATE pfsqrf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux diagnostics
+!     ALLOCATE pfsqsf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    !    for DDH, generic
+!     ALLOCATE pfcqrng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! rain
+!     ALLOCATE pfcqsng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! snow
+!     ALLOCATE pfsqltur_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)  ! liquid flux due to VDF
+!     ALLOCATE pfsqitur_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)  ! ice flux due to VDF
+!     ALLOCATE pfplsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! liq+rain sedim flux
+!     ALLOCATE pfplsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! ice+snow sedim flux
+!     ALLOCATE pfhpsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Enthalpy flux for liq
+!     ALLOCATE pfhpsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
+
+
     DO BUFFER_IDX=0, BUFFER_COUNT-1
     BLOCK_START=BUFFER_IDX*BUFFER_BLOCK_SIZE+1
     BLOCK_END=MIN((BUFFER_IDX+1)*BUFFER_BLOCK_SIZE, NGPTOT)
+
+! pt=pt(:,:, BLOCK_START:BLOCK_END)
+! pq=pq(:,:,BLOCK_START:BLOCK_END)
+! buffer_tmp=buffer_tmp(:,:,:,BLOCK_START:BLOCK_END)
+! pvfa=pvfa(:,:,BLOCK_START:BLOCK_END)
+! pvfl=pvfl(:,:,BLOCK_START:BLOCK_END)
+! pvfi=pvfi(:,:,BLOCK_START:BLOCK_END)
+! pdyna=pdyna(:,:,BLOCK_START:BLOCK_END)
+! pdynl=pdynl(:,:,BLOCK_START:BLOCK_END)
+! pdyni=pdyni(:,:,BLOCK_START:BLOCK_END)
+! phrsw=phrsw(:,:,BLOCK_START:BLOCK_END)
+! phrlw=phrlw(:,:,BLOCK_START:BLOCK_END)
+! pvervel=pvervel(:,:,BLOCK_START:BLOCK_END)
+! pap=pap(:,:,BLOCK_START:BLOCK_END)
+! paph=paph(:,:,BLOCK_START:BLOCK_END)
+! plsm=plsm(:,BLOCK_START:BLOCK_END)
+! ldcum=ldcum(:,BLOCK_START:BLOCK_END)
+! ktype=ktype(:,BLOCK_START:BLOCK_END)
+! plu=plu(:,:,BLOCK_START:BLOCK_END)
+! psnde=psnde(:,:,BLOCK_START:BLOCK_END)
+! pmfu=pmfu(:,:,BLOCK_START:BLOCK_END)
+! pmfd=pmfd(:,:,BLOCK_START:BLOCK_END)
+! pa=pa(:,:,BLOCK_START:BLOCK_END)
+! pclv=pclv(:,:,:,BLOCK_START:BLOCK_END)
+! psupsat=psupsat(:,:,BLOCK_START:BLOCK_END)
+! plcrit_aer=plcrit_aer(:,:,BLOCK_START:BLOCK_END)
+! picrit_aer=picrit_aer(:,:,BLOCK_START:BLOCK_END)
+! pre_ice=pre_ice(:,:,BLOCK_START:BLOCK_END)
+! pccn=pccn(:,:,BLOCK_START:BLOCK_END)
+! pnice=pnice(:,:,BLOCK_START:BLOCK_END)
+
+
+!$acc copy( &               ! initialized and copied to device then back to host after region is done
+!$acc   buffer_loc(:,:,:,BLOCK_START:BLOCK_END), &
+!$acc   plude(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pcovptot(:,:,BLOCK_START:BLOCK_END), &
+!$acc   prainfrac_toprfz(:,BLOCK_START:BLOCK_END)) &
+!$acc copyout( &
+!$acc   pfsqlf(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqif(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqnng(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqlng(:,:,BLOCK_START:BLOCK_END) , &
+!$acc   pfsqrf(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqsf(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqrng(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfcqsng(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqltur(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfsqitur(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfplsl(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfplsn(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfhpsl(:,:,BLOCK_START:BLOCK_END), &
+!$acc   pfhpsn(:,:,BLOCK_START:BLOCK_END))
 
 !$acc data &
 !$acc copyin( &
@@ -223,6 +391,100 @@ CONTAINS
 !$acc end data
 
     ENDDO ! end of outer block loop
+
+    ALLOCATE TEST_ARRAY(1024,1024)
+    TEST_ARRAY = 37 ! do I need TEST_ARRAY(:,:)=37 ?
+    ALLOCATE TEST_ARRAY_BLOCK(1024,64)
+
+    !$acc enter data create(TEST_ARRAY_BLOCK)
+
+    DO BLK=1,1024,64
+
+      !$acc host_data use_device(TEST_ARRAY_BLOCK)
+      call acc_memcpy_to_device(TEST_ARRAY_BLOCK, TEST_ARRAY(:,BLK:BLK+63), 1024*64*SIZEOF(TEST_ARRAY(1,1)))
+      !$acc end host_data
+
+!!      !$acc serial present(TEST_ARRAY_BLOCK)  ! Inside serial region everythin is executed on device on 1 thread
+!!      !$acc end serial
+      
+      !$acc parallel loop gang vector_length(64)
+      DO J=BLK,BKL+63
+        !$acc loop vector(64)
+        DO I=1,1024
+        TEST_ARRAY(I,J) = 5
+        END DO
+      END DO
+      
+      !$acc host_data use_device(TEST_ARRAY_BLOCK)
+      call acc_memcpy_to_device(TEST_ARRAY(:,BLK:BLK+63), TEST_ARRAY_BLOCK, 1024*64*SIZEOF(TEST_ARRAY(1,1)))
+      !$acc end host_data
+      !$acc exit data delete(TEST_ARRAY_BLOCK)
+      
+    END DO
+
+    ! CHECK OUTPUT
+      DO J=1,1024
+        DO I=1,1024
+          IF (TEST_ARRAY(I,J) /= 5) print*, 'Incorect value in TEST_ARRAY (should be 5)'
+        END DO
+      END DO
+    DO 
+    DEALLOCATE(TEST_ARRAY)
+    DEALLOCATE(TEST_ARRAY_BLOCK)
+
+    ! ! deallocate buffer arrays
+    ! DEALLOCATE pt_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! T at start of callpar
+    ! DEALLOCATE pq_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! Q at start of callpar
+    ! DEALLOCATE buffer_tmp_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_TMP
+    ! ! DEALLOCATE BUFFER_CML_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_CML
+    ! DEALLOCATE pvfa_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! CC from VDF scheme
+    ! DEALLOCATE pvfl_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Liq from VDF scheme
+    ! DEALLOCATE pvfi_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Ice from VDF scheme
+    ! DEALLOCATE pdyna_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! CC from Dynamics
+    ! DEALLOCATE pdynl_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Liq from Dynamics
+    ! DEALLOCATE pdyni_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Liq from Dynamics
+    ! DEALLOCATE phrsw_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Short-wave heating rate
+    ! DEALLOCATE phrlw_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Long-wave heating rate
+    ! DEALLOCATE pvervel_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)  !Vertical velocity
+    ! DEALLOCATE pap_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)      ! Pressure on full levels
+    ! DEALLOCATE paph_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE) ! Pressure on half levels
+    ! DEALLOCATE plsm_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Land fraction _block(0-1)
+    ! DEALLOCATE ldcum_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Convection active
+    ! DEALLOCATE ktype_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Convection type 0,1,2
+    ! DEALLOCATE plu_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)      ! Conv. condensate
+    ! DEALLOCATE psnde_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Conv. detrained snow
+    ! DEALLOCATE pmfu_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Conv. mass flux up
+    ! DEALLOCATE pmfd_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Conv. mass flux down
+    ! DEALLOCATE pa_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)       ! Original Cloud fraction _block(t)
+    ! DEALLOCATE pclv_block(NPROMA, NLEV, NCLV, BUFFER_BLOCK_SIZE)
+    ! DEALLOCATE psupsat_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
+    ! DEALLOCATE plcrit_aer_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
+    ! DEALLOCATE picrit_aer_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
+    ! DEALLOCATE pre_ice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
+    ! DEALLOCATE pccn_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! liquid cloud condensation nuclei
+    ! DEALLOCATE pnice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
+    !
+    ! ! copy
+    ! DEALLOCATE buffer_loc_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_LOC
+    ! DEALLOCATE plude_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Conv. detrained water
+    ! DEALLOCATE pcovptot_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Precip fraction
+    ! DEALLOCATE prainfrac_toprfz_block(NPROMA, BUFFER_BLOCK_SIZE)
+    !
+    ! !copyout
+    ! DEALLOCATE pfsqlf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux of liquid
+    ! DEALLOCATE pfsqif_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux of ice
+    ! DEALLOCATE pfcqnng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! -ve corr for ice
+    ! DEALLOCATE pfcqlng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! -ve corr for liq
+    ! DEALLOCATE pfsqrf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux diagnostics
+    ! DEALLOCATE pfsqsf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    !    for DDH, generic
+    ! DEALLOCATE pfcqrng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! rain
+    ! DEALLOCATE pfcqsng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! snow
+    ! DEALLOCATE pfsqltur_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)  ! liquid flux due to VDF
+    ! DEALLOCATE pfsqitur_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)  ! ice flux due to VDF
+    ! DEALLOCATE pfplsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! liq+rain sedim flux
+    ! DEALLOCATE pfplsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! ice+snow sedim flux
+    ! DEALLOCATE pfhpsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Enthalpy flux for liq
+    ! DEALLOCATE pfhpsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
 
     CALL TIMER%THREAD_END(TID)
 
