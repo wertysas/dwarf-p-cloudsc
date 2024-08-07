@@ -17,6 +17,8 @@ MODULE CLOUDSC_DRIVER_GPU_SCC_MOD
 
   USE CLOUDSC_GPU_SCC_MOD, ONLY: CLOUDSC_SCC
 
+  USE OPENACC
+
   IMPLICIT NONE
 
 CONTAINS
@@ -105,7 +107,7 @@ CONTAINS
     INTEGER(KIND=JPIM) :: BUFFER_IDX            ! idx of current buffer
     INTEGER(KIND=JPIM) :: BLOCK_START            ! idx of current buffer
     INTEGER(KIND=JPIM) :: BLOCK_END            ! idx of current buffer
-    
+
     ! Temporary buffers used for double blocked lopo todo: remove and explicitly transfer
     ! copyin
     ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pt_block
@@ -163,7 +165,7 @@ CONTAINS
     INTEGER(KIND=JPIM) :: J
     INTEGER(KIND=JPIM) :: I
     INTEGER(KIND=JPIM) :: BLK
-    
+
 
     ! Local copy of cloud parameters for offload
     TYPE(TECLDP) :: LOCAL_YRECLDP
@@ -222,13 +224,13 @@ CONTAINS
 !     ALLOCATE pre_ice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
 !     ALLOCATE pccn_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! liquid cloud condensation nuclei
 !     ALLOCATE pnice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
-!     
+!
 !     ! copy
 !     ALLOCATE buffer_loc_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_LOC
 !     ALLOCATE plude_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Conv. detrained water
 !     ALLOCATE pcovptot_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Precip fraction
 !     ALLOCATE prainfrac_toprfz_block(NPROMA, BUFFER_BLOCK_SIZE)
-!     
+!
 !     !copyout
 !     ALLOCATE pfsqlf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux of liquid
 !     ALLOCATE pfsqif_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux of ice
@@ -246,135 +248,135 @@ CONTAINS
 !     ALLOCATE pfhpsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
 
 
-    DO BUFFER_IDX=0, BUFFER_COUNT-1
-    BLOCK_START=BUFFER_IDX*BUFFER_BLOCK_SIZE+1
-    BLOCK_END=MIN((BUFFER_IDX+1)*BUFFER_BLOCK_SIZE, NGPTOT)
+!           DO BUFFER_IDX=0, BUFFER_COUNT-1
+!           BLOCK_START=BUFFER_IDX*BUFFER_BLOCK_SIZE+1
+!           BLOCK_END=MIN((BUFFER_IDX+1)*BUFFER_BLOCK_SIZE, NGPTOT)
+!
+!       ! pt=pt(:,:, BLOCK_START:BLOCK_END)
+!       ! pq=pq(:,:,BLOCK_START:BLOCK_END)
+!       ! buffer_tmp=buffer_tmp(:,:,:,BLOCK_START:BLOCK_END)
+!       ! pvfa=pvfa(:,:,BLOCK_START:BLOCK_END)
+!       ! pvfl=pvfl(:,:,BLOCK_START:BLOCK_END)
+!       ! pvfi=pvfi(:,:,BLOCK_START:BLOCK_END)
+!       ! pdyna=pdyna(:,:,BLOCK_START:BLOCK_END)
+!       ! pdynl=pdynl(:,:,BLOCK_START:BLOCK_END)
+!       ! pdyni=pdyni(:,:,BLOCK_START:BLOCK_END)
+!       ! phrsw=phrsw(:,:,BLOCK_START:BLOCK_END)
+!       ! phrlw=phrlw(:,:,BLOCK_START:BLOCK_END)
+!       ! pvervel=pvervel(:,:,BLOCK_START:BLOCK_END)
+!       ! pap=pap(:,:,BLOCK_START:BLOCK_END)
+!       ! paph=paph(:,:,BLOCK_START:BLOCK_END)
+!       ! plsm=plsm(:,BLOCK_START:BLOCK_END)
+!       ! ldcum=ldcum(:,BLOCK_START:BLOCK_END)
+!       ! ktype=ktype(:,BLOCK_START:BLOCK_END)
+!       ! plu=plu(:,:,BLOCK_START:BLOCK_END)
+!       ! psnde=psnde(:,:,BLOCK_START:BLOCK_END)
+!       ! pmfu=pmfu(:,:,BLOCK_START:BLOCK_END)
+!       ! pmfd=pmfd(:,:,BLOCK_START:BLOCK_END)
+!       ! pa=pa(:,:,BLOCK_START:BLOCK_END)
+!       ! pclv=pclv(:,:,:,BLOCK_START:BLOCK_END)
+!       ! psupsat=psupsat(:,:,BLOCK_START:BLOCK_END)
+!       ! plcrit_aer=plcrit_aer(:,:,BLOCK_START:BLOCK_END)
+!       ! picrit_aer=picrit_aer(:,:,BLOCK_START:BLOCK_END)
+!       ! pre_ice=pre_ice(:,:,BLOCK_START:BLOCK_END)
+!       ! pccn=pccn(:,:,BLOCK_START:BLOCK_END)
+!       ! pnice=pnice(:,:,BLOCK_START:BLOCK_END)
+!
+!
+!       !$acc data &
+!       !$acc copyin( &
+!       !$acc   pt(:,:, BLOCK_START:BLOCK_END), &
+!       !$acc   pq(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   buffer_cml, &
+!       !$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pvfa(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pvfl(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pvfi(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pdyna(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pdynl(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pdyni(:,:,BLOCK_START:BLOCK_END),&
+!       !$acc   phrsw(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   phrlw(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pvervel(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pap(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   paph(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   plsm(:,BLOCK_START:BLOCK_END), &
+!       !$acc   ldcum(:,BLOCK_START:BLOCK_END), &
+!       !$acc   ktype(:,BLOCK_START:BLOCK_END), &
+!       !$acc   plu(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   psnde(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pmfu(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pmfd(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pa(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pclv(:,:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   psupsat(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   plcrit_aer(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   picrit_aer(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pre_ice(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pccn(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pnice(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   yrecldp) &
+!       !$acc copy( &               ! initialized and copied to device then back to host after region is done
+!       !$acc   buffer_loc(:,:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   plude(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pcovptot(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   prainfrac_toprfz(:,BLOCK_START:BLOCK_END)) &
+!       !$acc copyout( &
+!       !$acc   pfsqlf(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfsqif(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfcqnng(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfcqlng(:,:,BLOCK_START:BLOCK_END) , &
+!       !$acc   pfsqrf(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfsqsf(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfcqrng(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfcqsng(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfsqltur(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfsqitur(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfplsl(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfplsn(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfhpsl(:,:,BLOCK_START:BLOCK_END), &
+!       !$acc   pfhpsn(:,:,BLOCK_START:BLOCK_END))
+!
+!
+!       !$acc parallel loop gang vector_length(NPROMA)
+!           DO JKGLO=BLOCK_START, BLOCK_END, NPROMA ! loops from 1 ... NGPTOT, with step size NPROMA
+!              IBL=(JKGLO-1)/NPROMA+1
+!              ICEND=MIN(NPROMA,NGPTOT-JKGLO+1)
+!
+!              CALL CLOUDSC_SCC &
+!               & (1, ICEND, NPROMA, NLEV, PTSPHY,&
+!               & PT(:,:,IBL), PQ(:,:,IBL), &
+!               & BUFFER_TMP(:,:,1,IBL), BUFFER_TMP(:,:,3,IBL), BUFFER_TMP(:,:,2,IBL), BUFFER_TMP(:,:,4:8,IBL), &
+!               & BUFFER_LOC(:,:,1,IBL), BUFFER_LOC(:,:,3,IBL), BUFFER_LOC(:,:,2,IBL), BUFFER_LOC(:,:,4:8,IBL), &
+!               & PVFA(:,:,IBL), PVFL(:,:,IBL), PVFI(:,:,IBL), PDYNA(:,:,IBL), PDYNL(:,:,IBL), PDYNI(:,:,IBL), &
+!               & PHRSW(:,:,IBL),    PHRLW(:,:,IBL),&
+!               & PVERVEL(:,:,IBL),  PAP(:,:,IBL),      PAPH(:,:,IBL),&
+!               & PLSM(:,IBL),       LDCUM(:,IBL),      KTYPE(:,IBL), &
+!               & PLU(:,:,IBL),      PLUDE(:,:,IBL),    PSNDE(:,:,IBL),    PMFU(:,:,IBL),     PMFD(:,:,IBL),&
+!               !---prognostic fields
+!               & PA(:,:,IBL),       PCLV(:,:,:,IBL),   PSUPSAT(:,:,IBL),&
+!               !-- arrays for aerosol-cloud interactions
+!               & PLCRIT_AER(:,:,IBL),PICRIT_AER(:,:,IBL),&
+!               & PRE_ICE(:,:,IBL),&
+!               & PCCN(:,:,IBL),     PNICE(:,:,IBL),&
+!               !---diagnostic output
+!               & PCOVPTOT(:,:,IBL), PRAINFRAC_TOPRFZ(:,IBL),&
+!               !---resulting fluxes
+!               & PFSQLF(:,:,IBL),   PFSQIF (:,:,IBL),  PFCQNNG(:,:,IBL),  PFCQLNG(:,:,IBL),&
+!               & PFSQRF(:,:,IBL),   PFSQSF (:,:,IBL),  PFCQRNG(:,:,IBL),  PFCQSNG(:,:,IBL),&
+!               & PFSQLTUR(:,:,IBL), PFSQITUR (:,:,IBL), &
+!               & PFPLSL(:,:,IBL),   PFPLSN(:,:,IBL),   PFHPSL(:,:,IBL),   PFHPSN(:,:,IBL),&
+!               & YRECLDP=LOCAL_YRECLDP)
+!
+!           ENDDO
+!       !$acc end parallel loop
+!       !$acc end data
+!
+!           ENDDO ! end of outer block loop
 
-! pt=pt(:,:, BLOCK_START:BLOCK_END)
-! pq=pq(:,:,BLOCK_START:BLOCK_END)
-! buffer_tmp=buffer_tmp(:,:,:,BLOCK_START:BLOCK_END)
-! pvfa=pvfa(:,:,BLOCK_START:BLOCK_END)
-! pvfl=pvfl(:,:,BLOCK_START:BLOCK_END)
-! pvfi=pvfi(:,:,BLOCK_START:BLOCK_END)
-! pdyna=pdyna(:,:,BLOCK_START:BLOCK_END)
-! pdynl=pdynl(:,:,BLOCK_START:BLOCK_END)
-! pdyni=pdyni(:,:,BLOCK_START:BLOCK_END)
-! phrsw=phrsw(:,:,BLOCK_START:BLOCK_END)
-! phrlw=phrlw(:,:,BLOCK_START:BLOCK_END)
-! pvervel=pvervel(:,:,BLOCK_START:BLOCK_END)
-! pap=pap(:,:,BLOCK_START:BLOCK_END)
-! paph=paph(:,:,BLOCK_START:BLOCK_END)
-! plsm=plsm(:,BLOCK_START:BLOCK_END)
-! ldcum=ldcum(:,BLOCK_START:BLOCK_END)
-! ktype=ktype(:,BLOCK_START:BLOCK_END)
-! plu=plu(:,:,BLOCK_START:BLOCK_END)
-! psnde=psnde(:,:,BLOCK_START:BLOCK_END)
-! pmfu=pmfu(:,:,BLOCK_START:BLOCK_END)
-! pmfd=pmfd(:,:,BLOCK_START:BLOCK_END)
-! pa=pa(:,:,BLOCK_START:BLOCK_END)
-! pclv=pclv(:,:,:,BLOCK_START:BLOCK_END)
-! psupsat=psupsat(:,:,BLOCK_START:BLOCK_END)
-! plcrit_aer=plcrit_aer(:,:,BLOCK_START:BLOCK_END)
-! picrit_aer=picrit_aer(:,:,BLOCK_START:BLOCK_END)
-! pre_ice=pre_ice(:,:,BLOCK_START:BLOCK_END)
-! pccn=pccn(:,:,BLOCK_START:BLOCK_END)
-! pnice=pnice(:,:,BLOCK_START:BLOCK_END)
-
-
-!$acc data &
-!$acc copyin( &
-!$acc   pt(:,:, BLOCK_START:BLOCK_END), &
-!$acc   pq(:,:,BLOCK_START:BLOCK_END), &
-!$acc   buffer_cml, &
-!$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), &
-!$acc   pvfa(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pvfl(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pvfi(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pdyna(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pdynl(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pdyni(:,:,BLOCK_START:BLOCK_END),&
-!$acc   phrsw(:,:,BLOCK_START:BLOCK_END), &
-!$acc   phrlw(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pvervel(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pap(:,:,BLOCK_START:BLOCK_END), &
-!$acc   paph(:,:,BLOCK_START:BLOCK_END), &
-!$acc   plsm(:,BLOCK_START:BLOCK_END), &
-!$acc   ldcum(:,BLOCK_START:BLOCK_END), &
-!$acc   ktype(:,BLOCK_START:BLOCK_END), &
-!$acc   plu(:,:,BLOCK_START:BLOCK_END), &
-!$acc   psnde(:,:,BLOCK_START:BLOCK_END),
-!$acc   pmfu(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pmfd(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pa(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pclv(:,:,:,BLOCK_START:BLOCK_END), &
-!$acc   psupsat(:,:,BLOCK_START:BLOCK_END), &
-!$acc   plcrit_aer(:,:,BLOCK_START:BLOCK_END), &
-!$acc   picrit_aer(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pre_ice(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pccn(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pnice(:,:,BLOCK_START:BLOCK_END), &
-!$acc   yrecldp) &
-!$acc copy( &               ! initialized and copied to device then back to host after region is done
-!$acc   buffer_loc(:,:,:,BLOCK_START:BLOCK_END), &
-!$acc   plude(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pcovptot(:,:,BLOCK_START:BLOCK_END), &
-!$acc   prainfrac_toprfz(:,BLOCK_START:BLOCK_END)) &
-!$acc copyout( &
-!$acc   pfsqlf(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqif(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqnng(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqlng(:,:,BLOCK_START:BLOCK_END) , &
-!$acc   pfsqrf(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqsf(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqrng(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqsng(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqltur(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqitur(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfplsl(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfplsn(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfhpsl(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfhpsn(:,:,BLOCK_START:BLOCK_END))
-
-
-!$acc parallel loop gang vector_length(NPROMA)
-    DO JKGLO=BLOCK_START, BLOCK_END, NPROMA ! loops from 1 ... NGPTOT, with step size NPROMA
-       IBL=(JKGLO-1)/NPROMA+1
-       ICEND=MIN(NPROMA,NGPTOT-JKGLO+1)
-
-       CALL CLOUDSC_SCC &
-        & (1, ICEND, NPROMA, NLEV, PTSPHY,&
-        & PT(:,:,IBL), PQ(:,:,IBL), &
-        & BUFFER_TMP(:,:,1,IBL), BUFFER_TMP(:,:,3,IBL), BUFFER_TMP(:,:,2,IBL), BUFFER_TMP(:,:,4:8,IBL), &
-        & BUFFER_LOC(:,:,1,IBL), BUFFER_LOC(:,:,3,IBL), BUFFER_LOC(:,:,2,IBL), BUFFER_LOC(:,:,4:8,IBL), &
-        & PVFA(:,:,IBL), PVFL(:,:,IBL), PVFI(:,:,IBL), PDYNA(:,:,IBL), PDYNL(:,:,IBL), PDYNI(:,:,IBL), &
-        & PHRSW(:,:,IBL),    PHRLW(:,:,IBL),&
-        & PVERVEL(:,:,IBL),  PAP(:,:,IBL),      PAPH(:,:,IBL),&
-        & PLSM(:,IBL),       LDCUM(:,IBL),      KTYPE(:,IBL), &
-        & PLU(:,:,IBL),      PLUDE(:,:,IBL),    PSNDE(:,:,IBL),    PMFU(:,:,IBL),     PMFD(:,:,IBL),&
-        !---prognostic fields
-        & PA(:,:,IBL),       PCLV(:,:,:,IBL),   PSUPSAT(:,:,IBL),&
-        !-- arrays for aerosol-cloud interactions
-        & PLCRIT_AER(:,:,IBL),PICRIT_AER(:,:,IBL),&
-        & PRE_ICE(:,:,IBL),&
-        & PCCN(:,:,IBL),     PNICE(:,:,IBL),&
-        !---diagnostic output
-        & PCOVPTOT(:,:,IBL), PRAINFRAC_TOPRFZ(:,IBL),&
-        !---resulting fluxes
-        & PFSQLF(:,:,IBL),   PFSQIF (:,:,IBL),  PFCQNNG(:,:,IBL),  PFCQLNG(:,:,IBL),&
-        & PFSQRF(:,:,IBL),   PFSQSF (:,:,IBL),  PFCQRNG(:,:,IBL),  PFCQSNG(:,:,IBL),&
-        & PFSQLTUR(:,:,IBL), PFSQITUR (:,:,IBL), &
-        & PFPLSL(:,:,IBL),   PFPLSN(:,:,IBL),   PFHPSL(:,:,IBL),   PFHPSN(:,:,IBL),&
-        & YRECLDP=LOCAL_YRECLDP)
-
-    ENDDO
-!$acc end parallel loop
-!$acc end data
-
-    ENDDO ! end of outer block loop
-
-    ALLOCATE TEST_ARRAY(1024,1024)
+    ALLOCATE(TEST_ARRAY(1024,1024))
     TEST_ARRAY = 37 ! do I need TEST_ARRAY(:,:)=37 ?
-    ALLOCATE TEST_ARRAY_BLOCK(1024,64)
+    ALLOCATE(TEST_ARRAY_BLOCK(1024,64))
 
     !$acc enter data create(TEST_ARRAY_BLOCK)
 
@@ -387,28 +389,30 @@ CONTAINS
 !!      !$acc serial present(TEST_ARRAY_BLOCK)  ! Inside serial region everythin is executed on device on 1 thread
 !!      !$acc end serial
 
-      !$acc parallel loop gang vector_length(64)
-      DO J=BLK,BKL+63
-        !$acc loop vector(64)
+      !$acc parallel loop gang vector_length(64) present(TEST_ARRAY_BLOCK)
+      DO J=1,64
+        !$acc loop vector
         DO I=1,1024
-        TEST_ARRAY(I,J) = 5
+        TEST_ARRAY_BLOCK(I,J) = 5
         END DO
       END DO
+      !$acc end parallel loop
 
       !$acc host_data use_device(TEST_ARRAY_BLOCK)
-      call acc_memcpy_to_device(TEST_ARRAY(:,BLK:BLK+63), TEST_ARRAY_BLOCK, 1024*64*SIZEOF(TEST_ARRAY(1,1)))
+      call acc_memcpy_from_device(TEST_ARRAY(:,BLK:BLK+63), TEST_ARRAY_BLOCK, 1024*64*SIZEOF(TEST_ARRAY(1,1)))
       !$acc end host_data
-      !$acc exit data delete(TEST_ARRAY_BLOCK)
 
     END DO
+
+    !$acc exit data delete(TEST_ARRAY_BLOCK)
 
     ! CHECK OUTPUT
       DO J=1,1024
         DO I=1,1024
-          IF (TEST_ARRAY(I,J) /= 5) print*, 'Incorect value in TEST_ARRAY (should be 5)'
+          IF (TEST_ARRAY(I,J) /= 5) print*, 'Incorect value in TEST_ARRAY (should be 5)', TEST_ARRAY(I,J)
         END DO
       END DO
-    DO
+
     DEALLOCATE(TEST_ARRAY)
     DEALLOCATE(TEST_ARRAY_BLOCK)
 
