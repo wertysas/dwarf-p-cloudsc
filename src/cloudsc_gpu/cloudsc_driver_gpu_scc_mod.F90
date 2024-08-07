@@ -281,27 +281,6 @@ CONTAINS
 ! pnice=pnice(:,:,BLOCK_START:BLOCK_END)
 
 
-!$acc copy( &               ! initialized and copied to device then back to host after region is done
-!$acc   buffer_loc(:,:,:,BLOCK_START:BLOCK_END), &
-!$acc   plude(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pcovptot(:,:,BLOCK_START:BLOCK_END), &
-!$acc   prainfrac_toprfz(:,BLOCK_START:BLOCK_END)) &
-!$acc copyout( &
-!$acc   pfsqlf(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqif(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqnng(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqlng(:,:,BLOCK_START:BLOCK_END) , &
-!$acc   pfsqrf(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqsf(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqrng(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfcqsng(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqltur(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfsqitur(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfplsl(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfplsn(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfhpsl(:,:,BLOCK_START:BLOCK_END), &
-!$acc   pfhpsn(:,:,BLOCK_START:BLOCK_END))
-
 !$acc data &
 !$acc copyin( &
 !$acc   pt(:,:, BLOCK_START:BLOCK_END), &
@@ -406,7 +385,7 @@ CONTAINS
 
 !!      !$acc serial present(TEST_ARRAY_BLOCK)  ! Inside serial region everythin is executed on device on 1 thread
 !!      !$acc end serial
-      
+
       !$acc parallel loop gang vector_length(64)
       DO J=BLK,BKL+63
         !$acc loop vector(64)
@@ -414,12 +393,12 @@ CONTAINS
         TEST_ARRAY(I,J) = 5
         END DO
       END DO
-      
+
       !$acc host_data use_device(TEST_ARRAY_BLOCK)
       call acc_memcpy_to_device(TEST_ARRAY(:,BLK:BLK+63), TEST_ARRAY_BLOCK, 1024*64*SIZEOF(TEST_ARRAY(1,1)))
       !$acc end host_data
       !$acc exit data delete(TEST_ARRAY_BLOCK)
-      
+
     END DO
 
     ! CHECK OUTPUT
@@ -428,7 +407,7 @@ CONTAINS
           IF (TEST_ARRAY(I,J) /= 5) print*, 'Incorect value in TEST_ARRAY (should be 5)'
         END DO
       END DO
-    DO 
+    DO
     DEALLOCATE(TEST_ARRAY)
     DEALLOCATE(TEST_ARRAY_BLOCK)
 
