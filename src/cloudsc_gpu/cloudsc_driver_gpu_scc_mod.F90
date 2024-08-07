@@ -284,7 +284,8 @@ CONTAINS
 !$acc data &
 !$acc copyin( &
 !$acc   pt(:,:, BLOCK_START:BLOCK_END), &
-!$acc   pq(:,:,BLOCK_START:BLOCK_END),buffer_cml, &
+!$acc   pq(:,:,BLOCK_START:BLOCK_END), &
+!$acc   buffer_cml, &
 !$acc   buffer_tmp(:,:,:,BLOCK_START:BLOCK_END), &
 !$acc   pvfa(:,:,BLOCK_START:BLOCK_END), &
 !$acc   pvfl(:,:,BLOCK_START:BLOCK_END), &
