@@ -18,6 +18,8 @@ MODULE CLOUDSC_DRIVER_GPU_SCC_MOD
   USE CLOUDSC_GPU_SCC_MOD, ONLY: CLOUDSC_SCC
 
   USE OPENACC
+  USE CUDAFOR
+  USE, INTRINSIC :: ISO_C_BINDING
 
   IMPLICIT NONE
 
@@ -102,11 +104,6 @@ CONTAINS
     TYPE(PERFORMANCE_TIMER) :: TIMER
     INTEGER(KIND=JPIM) :: TID ! thread id from 0 .. NUMOMP - 1
 
-    INTEGER(KIND=JPIM) :: BUFFER_BLOCK_SIZE     ! block size for blocks in outer loop /johan
-    INTEGER(KIND=JPIM) :: BUFFER_COUNT          ! number of buffers
-    INTEGER(KIND=JPIM) :: BUFFER_IDX            ! idx of current buffer
-    INTEGER(KIND=JPIM) :: BLOCK_START            ! idx of current buffer
-    INTEGER(KIND=JPIM) :: BLOCK_END            ! idx of current buffer
 
     ! Temporary buffers used for double blocked lopo todo: remove and explicitly transfer
     ! copyin
@@ -160,16 +157,83 @@ CONTAINS
     ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfhpsl_block
     ! REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pfhpsn_block
 
-    REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:) :: TEST_ARRAY
-    REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:) :: TEST_ARRAY_BLOCK
-    INTEGER(KIND=JPIM) :: J
-    INTEGER(KIND=JPIM) :: I
-    INTEGER(KIND=JPIM) :: BLK
-
 
     ! Local copy of cloud parameters for offload
     TYPE(TECLDP) :: LOCAL_YRECLDP
+    
+    
+    INTEGER(KIND=JPIM) :: BUFFER_BLOCK_SIZE     ! block size for blocks in outer loop /johan
+    INTEGER(KIND=JPIM) :: BUFFER_COUNT          ! number of buffers
+    INTEGER(KIND=JPIM) :: BUFFER_IDX            ! idx of current buffer
+    INTEGER(KIND=JPIM) :: BLOCK_START            ! idx of current buffer
+    INTEGER(KIND=JPIM) :: BLOCK_END            ! idx of current buffer
 
+    
+    REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:) :: TEST_ARRAY
+    REAL(KIND=JPRB), ALLOCATABLE :: TEST_ARRAY_BLOCK(:,:)
+    !$acc declare device_resident(TEST_ARRAY_BLOCK)
+    ! REAL(KIND=JPRB) :: TEST_ARRAY_BLOCK(3750000, 128)
+    REAL(KIND=JPRB), POINTER :: TEST_ARRAY_BLOCK_PTR1D(:)
+    REAL(KIND=JPRB), POINTER :: TEST_ARRAY_BLOCK_PTR2D(:,:)
+    TYPE(c_devptr) :: TEST_ARRAY_BLOCK_CPTR
+
+    INTEGER(KIND=JPIM) :: J
+    INTEGER(KIND=JPIM) :: I
+    INTEGER(KIND=JPIM) :: BLK
+    INTEGER(KIND=JPIM) :: BUFFER_DIM2
+
+    ! BUFFER_BLOCK_SIZE=1000000*30/SIZEOF(TEST_ARRAY(1,1))
+    BUFFER_BLOCK_SIZE = 12000000 ! 37500000
+    BUFFER_DIM2 = 1024
+    ! (12000000, 128) ~> 12.3 GB  IF WE DOUBLE THIS BLOCK SIZE -> FAILURE, WHY? DEVICE HAS 40GB MEM.
+    ! (, 128) ~> 12.3 GB
+    print *, 'Size of BUFFER_BLOCK_SIZE', BUFFER_BLOCK_SIZE
+    ALLOCATE(TEST_ARRAY(BUFFER_BLOCK_SIZE,BUFFER_DIM2))
+    print *, 'Size of TEST_ARRAY', SIZEOF(TEST_ARRAY)
+    TEST_ARRAY = 37 ! do I need TEST_ARRAY(:,:)=37 ?
+    
+    ! TEST_ARRAY_BLOCK_CPTR = acc_malloc(BUFFER_BLOCK_SIZE*128*SIZEOF(TEST_ARRAY(1,1)))
+    ! call acc_memcpy_to_device(TEST_ARRAY_BLOCK_CPTR, TEST_ARRAY(:,1:128), BUFFER_BLOCK_SIZE*128*SIZEOF(TEST_ARRAY(1,1)))
+    ! TEST_ARRAY_BLOCK = TEST_ARRAY_BLOCK_CTPR(BUFFER_BLOCK_SIZE*128)
+    
+    ! GPU allocation since we have used !$acc declare device_resident
+    ALLOCATE(TEST_ARRAY_BLOCK(BUFFER_BLOCK_SIZE, 128))
+
+    DO BLK=1,BUFFER_DIM2,128
+      !$acc host_data use_device(TEST_ARRAY_BLOCK)
+      call acc_memcpy_to_device(TEST_ARRAY_BLOCK, TEST_ARRAY(:,BLK:BLK+127), BUFFER_BLOCK_SIZE*128*SIZEOF(TEST_ARRAY(1,1)))
+      !$acc end host_data
+
+!!      !$acc serial present(TEST_ARRAY_BLOCK)  ! Inside serial region everythin is executed on device on 1 thread
+!!      !$acc end serial
+
+      !$acc parallel loop gang vector_length(128) present(TEST_ARRAY_BLOCK)
+      DO J=1,128
+        !$acc loop vector
+        DO I=1,BUFFER_BLOCK_SIZE
+        TEST_ARRAY_BLOCK(I,J) = 5
+        END DO
+      END DO
+      !$acc end parallel loop
+
+      !$acc host_data use_device(TEST_ARRAY_BLOCK)
+      call acc_memcpy_from_device(TEST_ARRAY(:,BLK:BLK+127), TEST_ARRAY_BLOCK, BUFFER_BLOCK_SIZE*128*SIZEOF(TEST_ARRAY(1,1)))
+      !$acc end host_data
+    END DO
+    ! CHECK OUTPUT
+    DO J=1,BUFFER_DIM2
+      DO I=1,BUFFER_BLOCK_SIZE
+        IF (TEST_ARRAY(I,J) /= 5) print*, 'Incorect value in TEST_ARRAY (should be 5)', TEST_ARRAY(I,J)
+      END DO
+    END DO
+    
+     DEALLOCATE(TEST_ARRAY)
+     DEALLOCATE(TEST_ARRAY_BLOCK)
+  
+   
+    
+    
+    
     NGPBLKS = (NGPTOT / NPROMA) + MIN(MOD(NGPTOT,NPROMA), 1)
 1003 format(5x,'NUMPROC=',i0,', NUMOMP=',i0,', NGPTOTG=',i0,', NPROMA=',i0,', NGPBLKS=',i0)
     if (irank == 0) then
@@ -373,51 +437,6 @@ CONTAINS
 !       !$acc end data
 !
 !           ENDDO ! end of outer block loop
-    BUFFER_BLOCK_SIZE=1000000*30/SIZEOF(TEST_ARRAY(1,1))
-    print *, 'Size of BUFFER_BLOCK_SIZE', BUFFER_BLOCK_SIZE
-    ALLOCATE(TEST_ARRAY(BUFFER_BLOCK_SIZE,2048))
-    print *, 'Size of TEST_ARRAY', SIZEOF(TEST_ARRAY)
-    TEST_ARRAY = 37 ! do I need TEST_ARRAY(:,:)=37 ?
-    ALLOCATE(TEST_ARRAY_BLOCK(BUFFER_BLOCK_SIZE,128))
-
-    !$acc enter data create(TEST_ARRAY_BLOCK)
-
-    DO BLK=1,2048,128
-
-      !$acc host_data use_device(TEST_ARRAY_BLOCK)
-      call acc_memcpy_to_device(TEST_ARRAY_BLOCK, TEST_ARRAY(:,BLK:BLK+127), BUFFER_BLOCK_SIZE*128*SIZEOF(TEST_ARRAY(1,1)))
-      !$acc end host_data
-
-!!      !$acc serial present(TEST_ARRAY_BLOCK)  ! Inside serial region everythin is executed on device on 1 thread
-!!      !$acc end serial
-
-      !$acc parallel loop gang vector_length(128) present(TEST_ARRAY_BLOCK)
-      DO J=1,128
-        !$acc loop vector
-        DO I=1,BUFFER_BLOCK_SIZE
-        TEST_ARRAY_BLOCK(I,J) = 5
-        END DO
-      END DO
-      !$acc end parallel loop
-
-      !$acc host_data use_device(TEST_ARRAY_BLOCK)
-      call acc_memcpy_from_device(TEST_ARRAY(:,BLK:BLK+127), TEST_ARRAY_BLOCK, BUFFER_BLOCK_SIZE*128*SIZEOF(TEST_ARRAY(1,1)))
-      !$acc end host_data
-      
-    END DO
-
-    !$acc exit data delete(TEST_ARRAY_BLOCK)
-
-    ! CHECK OUTPUT
-      DO J=1,2048
-        DO I=1,BUFFER_BLOCK_SIZE
-          IF (TEST_ARRAY(I,J) /= 5) print*, 'Incorect value in TEST_ARRAY (should be 5)', TEST_ARRAY(I,J)
-        END DO
-      END DO
-
-    DEALLOCATE(TEST_ARRAY)
-    DEALLOCATE(TEST_ARRAY_BLOCK)
-
     ! ! deallocate buffer arrays
     ! DEALLOCATE pt_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! T at start of callpar
     ! DEALLOCATE pq_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! Q at start of callpar
