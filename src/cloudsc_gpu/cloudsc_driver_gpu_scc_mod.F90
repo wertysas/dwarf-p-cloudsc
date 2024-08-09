@@ -212,8 +212,7 @@ CONTAINS
     INTEGER(KIND=JPIM) :: BUFFER_IDX            ! idx of current buffer
     INTEGER(KIND=JPIM) :: BLOCK_START            ! idx of current buffer
     INTEGER(KIND=JPIM) :: BLOCK_END            ! idx of current buffer
-    INTEGER(KIND=JPIM) :: JKLOC
-
+    INTEGER(KIND=JPIM) :: IBLLOC 
     
     REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:) :: TEST_ARRAY
     REAL(KIND=JPRB), ALLOCATABLE :: TEST_ARRAY_BLOCK(:,:)
@@ -389,35 +388,35 @@ CONTAINS
         call acc_memcpy_to_device(prainfrac_toprfz_block, prainfrac_toprfz(:,BLOCK_START:BLOCK_END), SIZEOF(prainfrac_toprfz(:,BLOCK_START:BLOCK_END)))
       !$acc end host_data
     
-      !$acc parallel loop gang vector_length(NPROMA) copy(LOCAL_YRECLDP) copyin(JKGLO) copyin(NGPTOT)
-      DO JKLOC=1, BUFFER_BLOCK_SIZE, NPROMA ! loops from 1 ... NGPTOT, with step size NPROMA
-            IBL=(JKLOC-1)/NPROMA+1
-            JKGLO = BUFFER_IDX*BUFFER_BLOCK_SIZE+JKLOC
+      !$acc parallel loop gang vector_length(NPROMA) copy(LOCAL_YRECLDP)
+      DO IBLLOC=1, BUFFER_BLOCK_SIZE ! just a way to loop over NGPBLKS
+            IBL= BUFFER_BLOCK_SIZE*BUFFER_IDX +IBLLOC
+            JKGLO=(IBL-1)*NPROMA+1
             ICEND=MIN(NPROMA, NGPTOT-JKGLO+1)
 
              CALL CLOUDSC_SCC &
               & (1, ICEND, NPROMA, NLEV, PTSPHY,&
-              & PT_BLOCK(:,:,IBL), PQ_BLOCK(:,:,IBL), &
-              & BUFFER_TMP_BLOCK(:,:,1,IBL), BUFFER_TMP_BLOCK(:,:,3,IBL), BUFFER_TMP_BLOCK(:,:,2,IBL), BUFFER_TMP_BLOCK(:,:,4:8,IBL), &
-              & BUFFER_LOC_BLOCK(:,:,1,IBL), BUFFER_LOC_BLOCK(:,:,3,IBL), BUFFER_LOC_BLOCK(:,:,2,IBL), BUFFER_LOC_BLOCK(:,:,4:8,IBL), &
-              & PVFA_BLOCK(:,:,IBL), PVFL_BLOCK(:,:,IBL), PVFI_BLOCK(:,:,IBL), PDYNA_BLOCK(:,:,IBL), PDYNL_BLOCK(:,:,IBL), PDYNI_BLOCK(:,:,IBL), &
-              & PHRSW_BLOCK(:,:,IBL),    PHRLW_BLOCK(:,:,IBL),&
-              & PVERVEL_BLOCK(:,:,IBL),  PAP_BLOCK(:,:,IBL),      PAPH_BLOCK(:,:,IBL),&
-              & PLSM_BLOCK(:,IBL),       LDCUM_BLOCK(:,IBL),      KTYPE_BLOCK(:,IBL), &
-              & PLU_BLOCK(:,:,IBL),      PLUDE_BLOCK(:,:,IBL),    PSNDE_BLOCK(:,:,IBL),    PMFU_BLOCK(:,:,IBL),     PMFD_BLOCK(:,:,IBL),&
+              & PT_BLOCK(:,:,IBLLOC), PQ_BLOCK(:,:,IBLLOC), &
+              & BUFFER_TMP_BLOCK(:,:,1,IBLLOC), BUFFER_TMP_BLOCK(:,:,3,IBLLOC), BUFFER_TMP_BLOCK(:,:,2,IBLLOC), BUFFER_TMP_BLOCK(:,:,4:8,IBLLOC), &
+              & BUFFER_LOC_BLOCK(:,:,1,IBLLOC), BUFFER_LOC_BLOCK(:,:,3,IBLLOC), BUFFER_LOC_BLOCK(:,:,2,IBLLOC), BUFFER_LOC_BLOCK(:,:,4:8,IBLLOC), &
+              & PVFA_BLOCK(:,:,IBLLOC), PVFL_BLOCK(:,:,IBLLOC), PVFI_BLOCK(:,:,IBLLOC), PDYNA_BLOCK(:,:,IBLLOC), PDYNL_BLOCK(:,:,IBLLOC), PDYNI_BLOCK(:,:,IBLLOC), &
+              & PHRSW_BLOCK(:,:,IBLLOC),    PHRLW_BLOCK(:,:,IBLLOC),&
+              & PVERVEL_BLOCK(:,:,IBLLOC),  PAP_BLOCK(:,:,IBLLOC),      PAPH_BLOCK(:,:,IBLLOC),&
+              & PLSM_BLOCK(:,IBLLOC),       LDCUM_BLOCK(:,IBLLOC),      KTYPE_BLOCK(:,IBLLOC), &
+              & PLU_BLOCK(:,:,IBLLOC),      PLUDE_BLOCK(:,:,IBLLOC),    PSNDE_BLOCK(:,:,IBLLOC),    PMFU_BLOCK(:,:,IBLLOC),     PMFD_BLOCK(:,:,IBLLOC),&
               !---prognostic fields
-              & PA_BLOCK(:,:,IBL),       PCLV_BLOCK(:,:,:,IBL),   PSUPSAT_BLOCK(:,:,IBL),&
+              & PA_BLOCK(:,:,IBLLOC),       PCLV_BLOCK(:,:,:,IBLLOC),   PSUPSAT_BLOCK(:,:,IBLLOC),&
               !-- arrays for aerosol-cloud interactions
-              & PLCRIT_AER_BLOCK(:,:,IBL),PICRIT_AER_BLOCK(:,:,IBL),&
-              & PRE_ICE_BLOCK(:,:,IBL),&
-              & PCCN_BLOCK(:,:,IBL),     PNICE_BLOCK(:,:,IBL),&
+              & PLCRIT_AER_BLOCK(:,:,IBLLOC),PICRIT_AER_BLOCK(:,:,IBLLOC),&
+              & PRE_ICE_BLOCK(:,:,IBLLOC),&
+              & PCCN_BLOCK(:,:,IBLLOC),     PNICE_BLOCK(:,:,IBLLOC),&
               !---diagnostic output
-              & PCOVPTOT_BLOCK(:,:,IBL), PRAINFRAC_TOPRFZ_BLOCK(:,IBL),&
+              & PCOVPTOT_BLOCK(:,:,IBLLOC), PRAINFRAC_TOPRFZ_BLOCK(:,IBLLOC),&
               !---resulting fluxes
-              & PFSQLF_BLOCK(:,:,IBL),   PFSQIF_BLOCK(:,:,IBL),  PFCQNNG_BLOCK(:,:,IBL),  PFCQLNG_BLOCK(:,:,IBL),&
-              & PFSQRF_BLOCK(:,:,IBL),   PFSQSF_BLOCK(:,:,IBL),  PFCQRNG_BLOCK(:,:,IBL),  PFCQSNG_BLOCK(:,:,IBL),&
-              & PFSQLTUR_BLOCK(:,:,IBL), PFSQITUR_BLOCK(:,:,IBL), &
-              & PFPLSL_BLOCK(:,:,IBL),   PFPLSN_BLOCK(:,:,IBL),   PFHPSL_BLOCK(:,:,IBL),   PFHPSN_BLOCK(:,:,IBL),&
+              & PFSQLF_BLOCK(:,:,IBLLOC),   PFSQIF_BLOCK(:,:,IBLLOC),  PFCQNNG_BLOCK(:,:,IBLLOC),  PFCQLNG_BLOCK(:,:,IBLLOC),&
+              & PFSQRF_BLOCK(:,:,IBLLOC),   PFSQSF_BLOCK(:,:,IBLLOC),  PFCQRNG_BLOCK(:,:,IBLLOC),  PFCQSNG_BLOCK(:,:,IBLLOC),&
+              & PFSQLTUR_BLOCK(:,:,IBLLOC), PFSQITUR_BLOCK(:,:,IBLLOC), &
+              & PFPLSL_BLOCK(:,:,IBLLOC),   PFPLSN_BLOCK(:,:,IBLLOC),   PFHPSL_BLOCK(:,:,IBLLOC),   PFHPSN_BLOCK(:,:,IBLLOC),&
               & YRECLDP=LOCAL_YRECLDP)
 
           ENDDO
