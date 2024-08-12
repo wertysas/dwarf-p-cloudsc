@@ -213,22 +213,7 @@ CONTAINS
     INTEGER(KIND=JPIM) :: BLOCK_START            ! idx of current buffer
     INTEGER(KIND=JPIM) :: BLOCK_END            ! idx of current buffer
     INTEGER(KIND=JPIM) :: IBLLOC 
-    
-    REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:) :: TEST_ARRAY
-    REAL(KIND=JPRB), ALLOCATABLE :: TEST_ARRAY_BLOCK(:,:)
-    !$acc declare device_resident(TEST_ARRAY_BLOCK)
-    ! REAL(KIND=JPRB) :: TEST_ARRAY_BLOCK(3750000, 128)
-    REAL(KIND=JPRB), POINTER :: TEST_ARRAY_BLOCK_PTR1D(:)
-    REAL(KIND=JPRB), POINTER :: TEST_ARRAY_BLOCK_PTR2D(:,:)
-    TYPE(c_devptr) :: TEST_ARRAY_BLOCK_CPTR
-    INTEGER(KIND=JPIM) :: J
-    INTEGER(KIND=JPIM) :: I
-    INTEGER(KIND=JPIM) :: BLK
-    INTEGER(KIND=JPIM) :: BUFFER_DIM2
-
   
-   
-    
     
     
     NGPBLKS = (NGPTOT / NPROMA) + MIN(MOD(NGPTOT,NPROMA), 1)
@@ -246,9 +231,6 @@ CONTAINS
     LOCAL_YRECLDP = YRECLDP
 
     ! Local timer for each thread
-    TID = GET_THREAD_NUM()
-    CALL TIMER%THREAD_START(TID)
-
     BUFFER_BLOCK_SIZE=NGPBLKS/10
     BUFFER_COUNT=(NGPBLKS+BUFFER_BLOCK_SIZE-1)/BUFFER_BLOCK_SIZE
 
@@ -388,6 +370,11 @@ CONTAINS
         call acc_memcpy_to_device(prainfrac_toprfz_block, prainfrac_toprfz(:,BLOCK_START:BLOCK_END), SIZEOF(prainfrac_toprfz(:,BLOCK_START:BLOCK_END)))
       !$acc end host_data
     
+    
+    TID = GET_THREAD_NUM()
+    CALL TIMER%THREAD_ACC_START(TID)
+
+
       !$acc parallel loop gang vector_length(NPROMA) copy(LOCAL_YRECLDP)
       DO IBLLOC=1, BUFFER_BLOCK_SIZE ! just a way to loop over NGPBLKS
             IBL= BUFFER_BLOCK_SIZE*BUFFER_IDX +IBLLOC
@@ -421,6 +408,8 @@ CONTAINS
 
           ENDDO
       !$acc end parallel loop
+    
+      CALL TIMER%THREAD_ACC_END(TID)
    
     ! data to host
    !$acc host_data &
@@ -466,7 +455,6 @@ CONTAINS
     !$acc end host_data
 !
   ENDDO ! end of outer block loop
-    print *, 'OUT OF LOOP'
   ! ! deallocate buffer arrays
     ! DEALLOCATE pt_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! T at start of callpar
     ! DEALLOCATE pq_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! Q at start of callpar
@@ -521,7 +509,6 @@ CONTAINS
     ! DEALLOCATE pfhpsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Enthalpy flux for liq
     ! DEALLOCATE pfhpsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
 
-    CALL TIMER%THREAD_END(TID)
 
 
     CALL TIMER%END()
