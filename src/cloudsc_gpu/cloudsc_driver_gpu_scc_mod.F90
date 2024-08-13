@@ -97,12 +97,7 @@ CONTAINS
     REAL(KIND=JPRB), INTENT(OUT) :: PFHPSL(NPROMA, NLEV+1, NGPBLKS)    ! Enthalpy flux for liq
     REAL(KIND=JPRB), INTENT(OUT) :: PFHPSN(NPROMA, NLEV+1, NGPBLKS)    ! ice number concentration (cf. CCN)
 
-    INTEGER(KIND=JPIM) :: JKGLO,IBL,ICEND
-    TYPE(PERFORMANCE_TIMER) :: TIMER
-    INTEGER(KIND=JPIM) :: TID ! thread id from 0 .. NUMOMP - 1
-
-
-    ! Temporary buffers used for double blocked lopo todo: remove and explicitly transfer
+    ! Temporary buffers used for double blocked loop
     ! copyin
     REAL(KIND=JPRB), ALLOCATABLE, DIMENSION(:,:,:) :: pt_block
 	!$acc declare device_resident(pt_block)
@@ -202,10 +197,14 @@ CONTAINS
 	!$acc declare device_resident(pfhpsn_block)
 
 
+    INTEGER(KIND=JPIM) :: JKGLO,IBL,ICEND
+    TYPE(PERFORMANCE_TIMER) :: TIMER
+    INTEGER(KIND=JPIM) :: TID ! thread id from 0 .. NUMOMP - 1
+
     ! Local copy of cloud parameters for offload
     TYPE(TECLDP) :: LOCAL_YRECLDP
     
-    
+    ! double blocking variables
     INTEGER(KIND=JPIM) :: BLOCK_BUFFER_SIZE     ! block size for blocks in outer loop
     INTEGER(KIND=JPIM) :: BLOCK_COUNT           ! number of blocks
     INTEGER(KIND=JPIM) :: BLOCK_IDX             ! idx of current block in [1,BLOCK_COUNT]
@@ -213,7 +212,6 @@ CONTAINS
     INTEGER(KIND=JPIM) :: BLOCK_END             ! end of current block in [1,NGPBLKS]
     INTEGER(KIND=JPIM) :: IBLLOC                ! local loop idx inside inner block loop
   
-    
     
     NGPBLKS = (NGPTOT / NPROMA) + MIN(MOD(NGPTOT,NPROMA), 1)
 1003 format(5x,'NUMPROC=',i0,', NUMOMP=',i0,', NGPTOTG=',i0,', NPROMA=',i0,', NGPBLKS=',i0)
@@ -229,17 +227,15 @@ CONTAINS
     ! moved to the device the in ``acc data`` clause below
     LOCAL_YRECLDP = YRECLDP
 
-    ! Local timer for each thread
-    BLOCK_BUFFER_SIZE=NGPBLKS/4
+    ! BLOCK SIZES
+    BLOCK_BUFFER_SIZE= MIN(40000,NGPBLKS)
     BLOCK_COUNT=(NGPBLKS+BLOCK_BUFFER_SIZE-1)/BLOCK_BUFFER_SIZE
-
 
    ! buffer allocations
    !copyin
     ALLOCATE(pt_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
     ALLOCATE(pq_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
     ALLOCATE(buffer_tmp_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
-    ! ALLOCATE(BUFFER_CML_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
     ALLOCATE(pvfa_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
     ALLOCATE(pvfl_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
     ALLOCATE(pvfi_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
@@ -266,13 +262,11 @@ CONTAINS
     ALLOCATE(pre_ice_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
     ALLOCATE(pccn_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
     ALLOCATE(pnice_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
-
     ! copy
     ALLOCATE(buffer_loc_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
     ALLOCATE(plude_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
     ALLOCATE(pcovptot_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
     ALLOCATE(prainfrac_toprfz_block(NPROMA, BLOCK_BUFFER_SIZE))
-
     !copyout
     ALLOCATE(pfsqlf_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
     ALLOCATE(pfsqif_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
@@ -370,6 +364,7 @@ CONTAINS
       !$acc end host_data
     
     
+    ! Local timer for each thread
     TID = GET_THREAD_NUM()
     CALL TIMER%THREAD_ACC_START(TID)
 
