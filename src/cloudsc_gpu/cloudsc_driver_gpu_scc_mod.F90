@@ -17,7 +17,6 @@ MODULE CLOUDSC_DRIVER_GPU_SCC_MOD
 
   USE CLOUDSC_GPU_SCC_MOD, ONLY: CLOUDSC_SCC
   USE OPENACC
-  USE, INTRINSIC :: ISO_C_BINDING
 
   IMPLICIT NONE
 
@@ -207,12 +206,12 @@ CONTAINS
     TYPE(TECLDP) :: LOCAL_YRECLDP
     
     
-    INTEGER(KIND=JPIM) :: BUFFER_BLOCK_SIZE     ! block size for blocks in outer loop /johan
-    INTEGER(KIND=JPIM) :: BUFFER_COUNT          ! number of buffers
-    INTEGER(KIND=JPIM) :: BUFFER_IDX            ! idx of current buffer
-    INTEGER(KIND=JPIM) :: BLOCK_START            ! idx of current buffer
-    INTEGER(KIND=JPIM) :: BLOCK_END            ! idx of current buffer
-    INTEGER(KIND=JPIM) :: IBLLOC 
+    INTEGER(KIND=JPIM) :: BLOCK_BUFFER_SIZE     ! block size for blocks in outer loop
+    INTEGER(KIND=JPIM) :: BLOCK_COUNT           ! number of blocks
+    INTEGER(KIND=JPIM) :: BLOCK_IDX             ! idx of current block in [1,BLOCK_COUNT]
+    INTEGER(KIND=JPIM) :: BLOCK_START           ! start of current block in [1,NGPBLKS]
+    INTEGER(KIND=JPIM) :: BLOCK_END             ! end of current block in [1,NGPBLKS]
+    INTEGER(KIND=JPIM) :: IBLLOC                ! local loop idx inside inner block loop
   
     
     
@@ -231,69 +230,69 @@ CONTAINS
     LOCAL_YRECLDP = YRECLDP
 
     ! Local timer for each thread
-    BUFFER_BLOCK_SIZE=NGPBLKS/10
-    BUFFER_COUNT=(NGPBLKS+BUFFER_BLOCK_SIZE-1)/BUFFER_BLOCK_SIZE
+    BLOCK_BUFFER_SIZE=NGPBLKS/4
+    BLOCK_COUNT=(NGPBLKS+BLOCK_BUFFER_SIZE-1)/BLOCK_BUFFER_SIZE
 
 
    ! buffer allocations
    !copyin
-    ALLOCATE(pt_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pq_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(buffer_tmp_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE))
-    ! ALLOCATE(BUFFER_CML_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE))
-    ALLOCATE(pvfa_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pvfl_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pvfi_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pdyna_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pdynl_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pdyni_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(phrsw_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(phrlw_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pvervel_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pap_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(paph_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(plsm_block(NPROMA, BUFFER_BLOCK_SIZE))
-    ALLOCATE(ldcum_block(NPROMA, BUFFER_BLOCK_SIZE))
-    ALLOCATE(ktype_block(NPROMA, BUFFER_BLOCK_SIZE))
-    ALLOCATE(plu_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(psnde_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pmfu_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pmfd_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pa_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pclv_block(NPROMA, NLEV, NCLV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(psupsat_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(plcrit_aer_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(picrit_aer_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pre_ice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pccn_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pnice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
+    ALLOCATE(pt_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pq_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(buffer_tmp_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
+    ! ALLOCATE(BUFFER_CML_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
+    ALLOCATE(pvfa_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pvfl_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pvfi_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pdyna_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pdynl_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pdyni_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(phrsw_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(phrlw_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pvervel_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pap_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(paph_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(plsm_block(NPROMA, BLOCK_BUFFER_SIZE))
+    ALLOCATE(ldcum_block(NPROMA, BLOCK_BUFFER_SIZE))
+    ALLOCATE(ktype_block(NPROMA, BLOCK_BUFFER_SIZE))
+    ALLOCATE(plu_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(psnde_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pmfu_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pmfd_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pa_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pclv_block(NPROMA, NLEV, NCLV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(psupsat_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(plcrit_aer_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(picrit_aer_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pre_ice_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pccn_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pnice_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
 
     ! copy
-    ALLOCATE(buffer_loc_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE))
-    ALLOCATE(plude_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pcovptot_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE))
-    ALLOCATE(prainfrac_toprfz_block(NPROMA, BUFFER_BLOCK_SIZE))
+    ALLOCATE(buffer_loc_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
+    ALLOCATE(plude_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pcovptot_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    ALLOCATE(prainfrac_toprfz_block(NPROMA, BLOCK_BUFFER_SIZE))
 
     !copyout
-    ALLOCATE(pfsqlf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfsqif_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfcqnng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfcqlng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfsqrf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfsqsf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfcqrng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfcqsng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfsqltur_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfsqitur_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfplsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfplsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfhpsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
-    ALLOCATE(pfhpsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE))
+    ALLOCATE(pfsqlf_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfsqif_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfcqnng_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfcqlng_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfsqrf_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfsqsf_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfcqrng_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfcqsng_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfsqltur_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfsqitur_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfplsl_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfplsn_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfhpsl_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    ALLOCATE(pfhpsn_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
 
 
-    DO BUFFER_IDX=0, BUFFER_COUNT-1
-      BLOCK_START=BUFFER_IDX*BUFFER_BLOCK_SIZE+1
-      BLOCK_END=MIN((BUFFER_IDX+1)*BUFFER_BLOCK_SIZE, NGPBLKS)
+    DO BLOCK_IDX=0, BLOCK_COUNT-1
+      BLOCK_START=BLOCK_IDX*BLOCK_BUFFER_SIZE+1
+      BLOCK_END=MIN((BLOCK_IDX+1)*BLOCK_BUFFER_SIZE, NGPBLKS)
 
       ! data to device
       !$acc host_data &
@@ -376,8 +375,8 @@ CONTAINS
 
 
       !$acc parallel loop gang vector_length(NPROMA) copy(LOCAL_YRECLDP)
-      DO IBLLOC=1, BUFFER_BLOCK_SIZE ! just a way to loop over NGPBLKS
-            IBL= BUFFER_BLOCK_SIZE*BUFFER_IDX +IBLLOC
+      DO IBLLOC=1, BLOCK_BUFFER_SIZE ! just a way to loop over NGPBLKS
+            IBL= BLOCK_BUFFER_SIZE*BLOCK_IDX +IBLLOC
             JKGLO=(IBL-1)*NPROMA+1
             ICEND=MIN(NPROMA, NGPTOT-JKGLO+1)
 
@@ -455,60 +454,62 @@ CONTAINS
     !$acc end host_data
 !
   ENDDO ! end of outer block loop
-  ! ! deallocate buffer arrays
-    ! DEALLOCATE pt_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! T at start of callpar
-    ! DEALLOCATE pq_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE) ! Q at start of callpar
-    ! DEALLOCATE buffer_tmp_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_TMP
-    ! ! DEALLOCATE BUFFER_CML_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_CML
-    ! DEALLOCATE pvfa_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! CC from VDF scheme
-    ! DEALLOCATE pvfl_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Liq from VDF scheme
-    ! DEALLOCATE pvfi_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Ice from VDF scheme
-    ! DEALLOCATE pdyna_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! CC from Dynamics
-    ! DEALLOCATE pdynl_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Liq from Dynamics
-    ! DEALLOCATE pdyni_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Liq from Dynamics
-    ! DEALLOCATE phrsw_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Short-wave heating rate
-    ! DEALLOCATE phrlw_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Long-wave heating rate
-    ! DEALLOCATE pvervel_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)  !Vertical velocity
-    ! DEALLOCATE pap_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)      ! Pressure on full levels
-    ! DEALLOCATE paph_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE) ! Pressure on half levels
-    ! DEALLOCATE plsm_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Land fraction _block(0-1)
-    ! DEALLOCATE ldcum_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Convection active
-    ! DEALLOCATE ktype_block(NPROMA, BUFFER_BLOCK_SIZE)    ! Convection type 0,1,2
-    ! DEALLOCATE plu_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)      ! Conv. condensate
-    ! DEALLOCATE psnde_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Conv. detrained snow
-    ! DEALLOCATE pmfu_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Conv. mass flux up
-    ! DEALLOCATE pmfd_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! Conv. mass flux down
-    ! DEALLOCATE pa_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)       ! Original Cloud fraction _block(t)
-    ! DEALLOCATE pclv_block(NPROMA, NLEV, NCLV, BUFFER_BLOCK_SIZE)
-    ! DEALLOCATE psupsat_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
-    ! DEALLOCATE plcrit_aer_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
-    ! DEALLOCATE picrit_aer_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
-    ! DEALLOCATE pre_ice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)
-    ! DEALLOCATE pccn_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)     ! liquid cloud condensation nuclei
-    ! DEALLOCATE pnice_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
-    !
-    ! ! copy
-    ! DEALLOCATE buffer_loc_block(NPROMA,NLEV,3+NCLV,BUFFER_BLOCK_SIZE) ! Storage buffer for TENDENCY_LOC
-    ! DEALLOCATE plude_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Conv. detrained water
-    ! DEALLOCATE pcovptot_block(NPROMA, NLEV, BUFFER_BLOCK_SIZE)    ! Precip fraction
-    ! DEALLOCATE prainfrac_toprfz_block(NPROMA, BUFFER_BLOCK_SIZE)
-    !
-    ! !copyout
-    ! DEALLOCATE pfsqlf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux of liquid
-    ! DEALLOCATE pfsqif_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux of ice
-    ! DEALLOCATE pfcqnng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! -ve corr for ice
-    ! DEALLOCATE pfcqlng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! -ve corr for liq
-    ! DEALLOCATE pfsqrf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Flux diagnostics
-    ! DEALLOCATE pfsqsf_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    !    for DDH, generic
-    ! DEALLOCATE pfcqrng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! rain
-    ! DEALLOCATE pfcqsng_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)   ! snow
-    ! DEALLOCATE pfsqltur_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)  ! liquid flux due to VDF
-    ! DEALLOCATE pfsqitur_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)  ! ice flux due to VDF
-    ! DEALLOCATE pfplsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! liq+rain sedim flux
-    ! DEALLOCATE pfplsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! ice+snow sedim flux
-    ! DEALLOCATE pfhpsl_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! Enthalpy flux for liq
-    ! DEALLOCATE pfhpsn_block(NPROMA, NLEV+1, BUFFER_BLOCK_SIZE)    ! ice number concentration _block(cf. CCN)
 
+
+   ! buffer allocations
+   !copyin
+    DEALLOCATE(pt_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pq_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(buffer_tmp_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
+    ! DEALLOCATE(BUFFER_CML_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pvfa_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pvfl_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pvfi_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pdyna_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pdynl_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pdyni_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(phrsw_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(phrlw_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pvervel_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pap_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(paph_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(plsm_block(NPROMA, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(ldcum_block(NPROMA, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(ktype_block(NPROMA, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(plu_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(psnde_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pmfu_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pmfd_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pa_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pclv_block(NPROMA, NLEV, NCLV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(psupsat_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(plcrit_aer_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(picrit_aer_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pre_ice_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pccn_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pnice_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+
+    ! copy
+    DEALLOCATE(buffer_loc_block(NPROMA,NLEV,3+NCLV,BLOCK_BUFFER_SIZE))
+    DEALLOCATE(plude_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pcovptot_block(NPROMA, NLEV, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(prainfrac_toprfz_block(NPROMA, BLOCK_BUFFER_SIZE))
+
+    !copyout
+    DEALLOCATE(pfsqlf_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfsqif_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfcqnng_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfcqlng_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfsqrf_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfsqsf_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfcqrng_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfcqsng_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfsqltur_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfsqitur_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfplsl_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfplsn_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfhpsl_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
+    DEALLOCATE(pfhpsn_block(NPROMA, NLEV+1, BLOCK_BUFFER_SIZE))
 
 
     CALL TIMER%END()
